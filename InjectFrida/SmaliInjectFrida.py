@@ -8,19 +8,6 @@ import zipfile
 
 class  SmaliInject:
     def __init__(self,args):
-        has_lib = False
-        with zipfile.ZipFile(args.input, 'r') as apk_file:
-            for item in apk_file.infolist():
-                if item.filename.endswith(".so"):
-                    has_lib = True
-                    break
-        if has_lib:
-            print('apk find so , Use LIEF inject is better')
-            proceed = input("Keep running ? [Y/N]")
-            if proceed == 'Y' or proceed == 'y':
-                print("----- Smali inject -----")
-            else:
-                exit(0)
         self.apkpath = args.input
         self.outdir = args.output
         self.deletelist = []
@@ -43,37 +30,41 @@ class  SmaliInject:
             print(dex)
             if self.dexDecompile(dex):
                 smali_path = os.path.join(self.decompileDir,target_activity.replace('.','\\'))+".smali"
-                print(smali_path)
-                with open(smali_path, 'r') as fp:
-                    lines = fp.readlines()
-                    has_clinit = False
-                    start = 0
-                    for i in range(len(lines)):
-                        if lines[i].find(".source") != -1:
-                            start = i
-                        if lines[i].find(".method static constructor <clinit>()V") != -1:
-                            if lines[i + 3].find(".line") != -1:
-                                code_line = lines[i + 3][-3:]
-                                lines.insert(i + 3, "%s%s\r" % (lines[i + 3][0:-3], str(int(code_line) - 2)))
-                                print("%s%s" % (lines[i + 3][0:-3], str(int(code_line) - 2)))
-                                lines.insert(i + 4, "const-string v0, \"frida-gadget\"\r")
-                                lines.insert(i + 5,
-                                             "invoke-static {v0}, Ljava/lang/System;->loadLibrary(Ljava/lang/String;)V\r")
-                                has_clinit = True
-                                break
-                    if not has_clinit:
-                        lines.insert(start + 1, ".method static constructor <clinit>()V\r")
-                        lines.insert(start + 2, ".registers 1\r")
-                        lines.insert(start + 3, ".line 10\r")
-                        lines.insert(start + 4, "const-string v0, \"frida-gadget\"\r")
-                        lines.insert(start + 5,
-                                     "invoke-static {v0}, Ljava/lang/System;->loadLibrary(Ljava/lang/String;)V\r")
-                        lines.insert(start + 6, "return-void\r")
-                        lines.insert(start + 7, ".end method\r")
+                if os.path.exists(smali_path):
+                    print(smali_path)
+                    with open(smali_path, 'r') as fp:
+                        lines = fp.readlines()
+                        has_clinit = False
+                        start = 0
+                        for i in range(len(lines)):
+                            if lines[i].find(".source") != -1:
+                                start = i
+                            if lines[i].find(".method static constructor <clinit>()V") != -1:
+                                if lines[i + 3].find(".line") != -1:
+                                    code_line = lines[i + 3][-3:]
+                                    lines.insert(i + 3, "%s%s\r" % (lines[i + 3][0:-3], str(int(code_line) - 2)))
+                                    print("%s%s" % (lines[i + 3][0:-3], str(int(code_line) - 2)))
+                                    lines.insert(i + 4, "const-string v0, \"xx-gadget\"\r")
+                                    lines.insert(i + 5,
+                                                "invoke-static {v0}, Ljava/lang/System;->loadLibrary(Ljava/lang/String;)V\r")
+                                    has_clinit = True
+                                    print("add load frida gadget method static constructor <clinit>()V 1")
+                                    break
+                        if not has_clinit:
+                            lines.insert(start + 1, ".method static constructor <clinit>()V\r")
+                            lines.insert(start + 2, ".registers 1\r")
+                            lines.insert(start + 3, ".line 10\r")
+                            lines.insert(start + 4, "const-string v0, \"xx-gadget\"\r")
+                            lines.insert(start + 5,
+                                        "invoke-static {v0}, Ljava/lang/System;->loadLibrary(Ljava/lang/String;)V\r")
+                            lines.insert(start + 6, "return-void\r")
+                            lines.insert(start + 7, ".end method\r")
+                            print("add load frida gadget method static constructor <clinit>()V 2")
 
-                    with open(smali_path, "w") as fp:
-                        fp.writelines(lines)
-                self.dexCompile(dex)
+                        with open(smali_path, "w") as fp:
+                            fp.writelines(lines)
+                    self.dexCompile(dex)
+                    break
 
     def modifyapk(self):
         (path, filename) = os.path.split(self.apkpath)
@@ -88,15 +79,9 @@ class  SmaliInject:
                         out_file.writestr(item, orig_file.read(item.filename))
                 for dex in self.dexList:
                     out_file.write(dex,os.path.split(dex)[1])
-                out_file.write(os.path.join(self.toolPath, "frida-gadget-14.2.18-android-arm.so"),
-                               arcname="lib/armeabi-v7a/libfrida-gadget.so")
-                print("add lib/armeabi-v7a/libfrida-gadget.so")
-                out_file.write(os.path.join(self.toolPath, "frida-gadget-14.2.18-android-arm64.so"),
-                               arcname="lib/arm64-v8a/libfrida-gadget.so")
+                out_file.write(os.path.join(self.toolPath, "frida-gadget-16.5.9-android-arm64.so"),
+                               arcname="lib/arm64-v8a/libxx-gadget.so")
                 print("add lib/arm64-v8a/libfrida-gadget.so")
-                out_file.write(os.path.join(self.toolPath, "frida-gadget-14.2.18-android-x86.so"),
-                               arcname="lib/x86/libfrida-gadget.so")
-                print("add lib/x86/libfrida-gadget.so")
         shutil.rmtree("dex")
         shutil.rmtree("decompile")
         return outapk
@@ -104,18 +89,10 @@ class  SmaliInject:
     def addHook(self,apk_path):
         with zipfile.ZipFile(apk_path, 'a')as apk_file:
             for item in apk_file.infolist():
-                if item.filename == "lib/armeabi-v7a/libfrida-gadget.so":
-                    apk_file.write(os.path.join(self.toolPath, "libfrida-gadget.config.so"),
-                                   arcname="lib/armeabi-v7a/libfrida-gadget.config.so")
-                    print("add lib/armeabi-v7a/libfrida-gadget.config.so")
                 if item.filename == "lib/arm64-v8a/libfrida-gadget.so":
                     apk_file.write(os.path.join(self.toolPath, "libfrida-gadget.config.so"),
-                                   arcname="lib/arm64-v8a/libfrida-gadget.config.so")
+                                   arcname="lib/arm64-v8a/libxx-gadget.config.so")
                     print("add lib/arm64-v8a/libfrida-gadget.config.so")
-                if item.filename == "lib/x86/libfrida-gadget.so":
-                    apk_file.write(os.path.join(self.toolPath, "libfrida-gadget.config.so"),
-                                   arcname="lib/x86/libfrida-gadget.config.so")
-                    print("add lib/x86/libfrida-gadget.config.so")
                 continue
 
     def signApk(self,apk_path):
@@ -127,13 +104,13 @@ class  SmaliInject:
         apkname = os.path.splitext(os.path.split(apk_path)[1])[0]
         outfile = os.path.join(os.path.split(apk_path)[0], apkname + "_Signed.apk")
 
-        cmd = 'java -jar %s\\apksignerNew.jar sign --ks %s --ks-key-alias %s --ks-pass pass:%s --key-pass pass:%s --out %s %s'% \
+        cmd = 'java -jar %s\\apksigner.jar sign --ks %s --ks-key-alias %s --ks-pass pass:%s --key-pass pass:%s --out %s %s'% \
               (self.toolPath,keystore, alias,pswd,aliaspswd,outfile,apk_path)
         os.system(cmd)
 
     def get_launchable_activity_aapt(self):
 
-        aapt_path = os.path.join(self.toolPath, 'aapt.exe')
+        aapt_path = os.path.join(self.toolPath, 'aapt2.exe')
         cmd = '%s dump badging "%s" ' % (aapt_path, self.apkpath)
         p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         out,err = p.communicate()
