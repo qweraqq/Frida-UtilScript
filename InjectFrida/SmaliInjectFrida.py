@@ -44,7 +44,7 @@ class  SmaliInject:
                                     code_line = lines[i + 3][-3:]
                                     lines.insert(i + 3, "%s%s\r" % (lines[i + 3][0:-3], str(int(code_line) - 2)))
                                     print("%s%s" % (lines[i + 3][0:-3], str(int(code_line) - 2)))
-                                    lines.insert(i + 4, "const-string v0, \"xx-gadget\"\r")
+                                    lines.insert(i + 4, "const-string v0, \"xx-g\"\r")
                                     lines.insert(i + 5,
                                                 "invoke-static {v0}, Ljava/lang/System;->loadLibrary(Ljava/lang/String;)V\r")
                                     has_clinit = True
@@ -54,7 +54,7 @@ class  SmaliInject:
                             lines.insert(start + 1, ".method static constructor <clinit>()V\r")
                             lines.insert(start + 2, ".registers 1\r")
                             lines.insert(start + 3, ".line 10\r")
-                            lines.insert(start + 4, "const-string v0, \"xx-gadget\"\r")
+                            lines.insert(start + 4, "const-string v0, \"xx-g\"\r")
                             lines.insert(start + 5,
                                         "invoke-static {v0}, Ljava/lang/System;->loadLibrary(Ljava/lang/String;)V\r")
                             lines.insert(start + 6, "return-void\r")
@@ -80,7 +80,7 @@ class  SmaliInject:
                 for dex in self.dexList:
                     out_file.write(dex,os.path.split(dex)[1])
                 out_file.write(os.path.join(self.toolPath, "frida-gadget-16.5.9-android-arm64.so"),
-                               arcname="lib/arm64-v8a/libxx-gadget.so")
+                               arcname="lib/arm64-v8a/libxx-g.so")
                 print("add lib/arm64-v8a/libfrida-gadget.so")
         shutil.rmtree("dex")
         shutil.rmtree("decompile")
@@ -89,9 +89,9 @@ class  SmaliInject:
     def addHook(self,apk_path):
         with zipfile.ZipFile(apk_path, 'a')as apk_file:
             for item in apk_file.infolist():
-                if item.filename == "lib/arm64-v8a/libfrida-gadget.so":
+                if item.filename == "lib/arm64-v8a/libxx-g.so":
                     apk_file.write(os.path.join(self.toolPath, "libfrida-gadget.config.so"),
-                                   arcname="lib/arm64-v8a/libxx-gadget.config.so")
+                                   arcname="lib/arm64-v8a/libxx-g.config.so")
                     print("add lib/arm64-v8a/libfrida-gadget.config.so")
                 continue
 
