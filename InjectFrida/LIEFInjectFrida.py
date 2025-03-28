@@ -50,13 +50,9 @@ class LIEFInject:
                     apk_file.extract(item.filename)
                     self.deletelist.append(item.filename)
                     injectsolist.append(item.filename)
-        #x86有一点问题，且不支持x86_64
         for soname in injectsolist:
-            # if soname.find("x86_64") != -1:
-            if soname.find("x86") != -1:
-                continue
             so = lief.parse(os.getcwd()+"\\"+soname)
-            so.add_library("libfrida-gadget.so")
+            so.add_library("libxx-g.so")
             so.write(soname+"gadget.so")
 
 
@@ -69,18 +65,10 @@ class LIEFInject:
                 for item in orig_file.infolist():
                     if item.filename.find(self.soname) != -1 and os.path.exists(os.getcwd()+"\\"+item.filename+"gadget.so"):
                         out_file.write(os.getcwd()+"\\"+item.filename+"gadget.so",arcname=item.filename)
-                        if item.filename.find("lib/armeabi-v7a") != -1:
-                            out_file.write(os.path.join(self.toolPath,"frida-gadget-14.2.18-android-arm.so"),
-                                           arcname="lib/armeabi-v7a/libfrida-gadget.so")
-                            print("add lib/armeabi-v7a/libfrida-gadget.so")
                         if item.filename.find("lib/arm64-v8a") != -1:
-                            out_file.write(os.path.join(self.toolPath, "frida-gadget-14.2.18-android-arm64.so"),
-                                           arcname="lib/arm64-v8a/libfrida-gadget.so")
+                            out_file.write(os.path.join(self.toolPath, "frida-gadget-16.5.9-android-arm64.so"),
+                                           arcname="lib/arm64-v8a/libxx-g.so")
                             print("add lib/arm64-v8a/libfrida-gadget.so")
-                        if item.filename.find("lib/x86/") != -1:
-                            out_file.write(os.path.join(self.toolPath, "frida-gadget-14.2.18-android-x86.so"),
-                                           arcname="lib/x86/libfrida-gadget.so")
-                            print("add lib/x86/libfrida-gadget.so")
                         continue
                     if item.filename.find("META-INF") == -1:
                         out_file.writestr(item, orig_file.read(item.filename))
@@ -91,18 +79,10 @@ class LIEFInject:
     def addHook(self,apk_path):
         with zipfile.ZipFile(apk_path, 'a')as apk_file:
             for item in apk_file.infolist():
-                if item.filename == "lib/armeabi-v7a/libfrida-gadget.so":
+                if item.filename == "lib/arm64-v8a/libxx-g.so":
                     apk_file.write(os.path.join(self.toolPath, "libfrida-gadget.config.so"),
-                                   arcname="lib/armeabi-v7a/libfrida-gadget.config.so")
-                    print("add lib/armeabi-v7a/libfrida-gadget.config.so")
-                if item.filename == "lib/arm64-v8a/libfrida-gadget.so":
-                    apk_file.write(os.path.join(self.toolPath, "libfrida-gadget.config.so"),
-                                   arcname="lib/arm64-v8a/libfrida-gadget.config.so")
+                                   arcname="lib/arm64-v8a/libxx-g.config.so")
                     print("add lib/arm64-v8a/libfrida-gadget.config.so")
-                if item.filename == "lib/x86/libfrida-gadget.so":
-                    apk_file.write(os.path.join(self.toolPath, "libfrida-gadget.config.so"),
-                                   arcname="lib/x86/libfrida-gadget.config.so")
-                    print("add lib/x86/libfrida-gadget.config.so")
                 continue
 
 
@@ -116,7 +96,7 @@ class LIEFInject:
         apkname = os.path.splitext(os.path.split(apk_path)[1])[0]
         outfile = os.path.join(os.path.split(apk_path)[0], apkname + "_Signed.apk")
 
-        cmd = 'java -jar %s\\apksignerNew.jar sign --ks %s --ks-key-alias %s --ks-pass pass:%s --key-pass pass:%s --out %s %s'% \
+        cmd = 'java -jar %s\\apksigner.jar sign --ks %s --ks-key-alias %s --ks-pass pass:%s --key-pass pass:%s --out %s %s'% \
               (self.toolPath,keystore, alias,pswd,aliaspswd,outfile,apk_path)
         # print(cmd)
         os.system(cmd)
